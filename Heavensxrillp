@@ -1,0 +1,730 @@
+repeat task.wait() until game:IsLoaded()
+ 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+ 
+local P = Players.LocalPlayer
+local PlayerGui = P:WaitForChild("PlayerGui")
+ 
+-- =========================
+-- 🔒 ลบเฉพาะ UI ของเราเท่านั้น
+-- =========================
+ 
+-- ถ้าเคยมี WindUI เก่า
+local oldWind = PlayerGui:FindFirstChild("WindUI")
+if oldWind then
+oldWind:Destroy()
+end
+ 
+-- ถ้าเคยมี WarpGui เก่า
+local oldWarp = PlayerGui:FindFirstChild("WarpGui")
+if oldWarp then
+oldWarp:Destroy()
+end
+ 
+-- =========================
+-- 🌪 โหลด WindUI
+-- =========================
+ 
+local WindUI = loadstring(game:HttpGet(
+"https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+ 
+local Window = WindUI:CreateWindow({
+Title = "heaven piece",
+Author = "ftgs",
+})
+ 
+local Tab = Window:Tab({
+Title = "Main",
+})
+ 
+-- =========================
+-- ⚙ SYSTEM
+-- =========================
+ 
+local running = false
+local lastSummon = 0
+ 
+local function getBoss()
+local m = workspace:FindFirstChild("Mod")
+if m then m = m:FindFirstChild("Boss") end
+if m then m = m:FindFirstChild("CidBoss") end
+return m
+end
+ 
+local function getPrompt()
+local map = workspace:FindFirstChild("Map")
+if not map then return nil end
+ 
+local bossFolder = map:FindFirstChild("Boss")  
+if not bossFolder then return nil end  
+ 
+local orb = bossFolder:FindFirstChild("Orb Shadow")  
+if not orb then return nil end  
+ 
+return orb:FindFirstChildWhichIsA("ProximityPrompt", true)
+ 
+end
+ 
+local function warpToBoss(boss)
+local char = P.Character
+if not char then return end
+ 
+local hrp = char:FindFirstChild("HumanoidRootPart")  
+if not hrp then return end  
+ 
+local part = boss.PrimaryPart or boss:FindFirstChildWhichIsA("BasePart")  
+if not part then return end  
+ 
+local pos = part.Position + Vector3.new(4,0,0)  
+hrp.CFrame = CFrame.lookAt(pos, part.Position)
+ 
+end
+ 
+local function autoAttack()
+local char = P.Character
+if not char then return end
+ 
+for _,tool in pairs(char:GetChildren()) do  
+    if tool:IsA("Tool") then  
+        tool:Activate()  
+    end  
+end
+ 
+end
+ 
+RunService.RenderStepped:Connect(function()
+if not running then return end
+ 
+local boss = getBoss()  
+ 
+-- ถ้าไม่มีบอส → summon  
+if not boss then  
+    if tick() - lastSummon > 0.5 then  
+        local prompt = getPrompt()  
+        if prompt then  
+            fireproximityprompt(prompt, prompt.HoldDuration)  
+            lastSummon = tick()  
+        end  
+    end  
+    return  
+end  
+ 
+warpToBoss(boss)  
+autoAttack()
+ 
+end)
+ 
+-- =========================
+-- 🎛 Toggle
+-- =========================
+ 
+Tab:Toggle({
+Title = "AUTO FARM CidBoss",
+Default = false,
+Callback = function(state)
+running = state
+end
+})-- =========================
+-- ORB WARP SYSTEM
+-- =========================
+ 
+local orbRunning = false
+local delayTime = 3
+ 
+local function getOrb()
+local map = workspace:FindFirstChild("Map")
+if not map then return nil end
+ 
+local bossFolder = map:FindFirstChild("Boss")  
+if not bossFolder then return nil end  
+ 
+return bossFolder:FindFirstChild("Orb Shadow")
+ 
+end
+ 
+local function warpToOrb()
+local char = P.Character
+if not char then return end
+ 
+local hrp = char:FindFirstChild("HumanoidRootPart")  
+if not hrp then return end  
+ 
+local boss = getOrb()  
+if not boss then return end  
+ 
+local part  
+if boss:IsA("Model") then  
+    part = boss.PrimaryPart or boss:FindFirstChildWhichIsA("BasePart")  
+elseif boss:IsA("BasePart") then  
+    part = boss  
+end  
+ 
+if not part then return end  
+ 
+hrp.CFrame = part.CFrame * CFrame.new(0,0,-4)
+ 
+end
+ 
+-- LOOP
+task.spawn(function()
+while true do
+if orbRunning then
+warpToOrb()
+end
+task.wait(delayTime)
+end
+end)
+ 
+-- =========================
+-- UI CONTROLS
+-- =========================
+ 
+Tab:Toggle({
+Title = "AUTO WARP ORB",
+Default = false,
+Callback = function(state)
+orbRunning = state
+end
+})
+ 
+Tab:Input({
+Title = "Warp Delay (Seconds)",
+Default = "3",
+Placeholder = "ใส่วินาที",
+Callback = function(text)
+local num = tonumber(text)
+if num and num > 0 then
+delayTime = num
+end
+end
+})-- =========================
+-- AUTO FARM ALL BOSSES (NO GOKU 100%)
+-- =========================
+ 
+local farmAll = false
+ 
+local function getBossFolder()
+local mod = workspace:FindFirstChild("Mod")
+if not mod then return nil end
+return mod:FindFirstChild("Boss")
+end
+ 
+-- 🔥 ตัดทุกตัวที่มีคำว่า goku ในชื่อ
+local function isGoku(model)
+if not model then return true end
+local name = string.lower(model.Name)
+return string.find(name, "goku") ~= nil
+end
+ 
+local function getAllBosses()
+local folder = getBossFolder()
+if not folder then return {} end
+ 
+local bosses = {}  
+for _,v in pairs(folder:GetChildren()) do  
+    if v:IsA("Model") and not isGoku(v) then  
+        table.insert(bosses, v)  
+    end  
+end  
+return bosses
+ 
+end
+ 
+local function getRoot(model)
+return model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+end
+ 
+local function getHumanoid(model)
+return model:FindFirstChildOfClass("Humanoid")
+end
+ 
+local function warpBehindAndLook(target)
+if isGoku(target) then return end -- 🔥 กันอีกชั้น
+ 
+local char = P.Character  
+if not char then return end  
+ 
+local hrp = char:FindFirstChild("HumanoidRootPart")  
+if not hrp then return end  
+ 
+local root = getRoot(target)  
+if not root then return end  
+ 
+local behindCF = root.CFrame * CFrame.new(0,0,-4)  
+hrp.CFrame = CFrame.lookAt(behindCF.Position, root.Position)
+ 
+end
+ 
+local function attack(target)
+if isGoku(target) then return end -- 🔥 กันอีกชั้น
+ 
+local char = P.Character  
+if not char then return end  
+ 
+for _,tool in pairs(char:GetChildren()) do  
+    if tool:IsA("Tool") then  
+        tool:Activate()  
+    end  
+end
+ 
+end
+ 
+task.spawn(function()
+while true do
+if farmAll then
+local bosses = getAllBosses()
+ 
+for _,boss in ipairs(bosses) do  
+            if not farmAll then break end  
+            if isGoku(boss) then continue end -- 🔥 กันอีกชั้น  
+ 
+            local humanoid = getHumanoid(boss)  
+ 
+            while farmAll and humanoid and humanoid.Health > 0 do  
+                if isGoku(boss) then break end -- 🔥 กันอีกชั้น  
+ 
+                warpBehindAndLook(boss)  
+                attack(boss)  
+                task.wait(0.15)  
+            end  
+ 
+            task.wait(0.2)  
+        end  
+    end  
+    task.wait(0.1)  
+end
+ 
+end)
+ 
+Tab:Toggle({
+Title = "AUTO FARM ALL BOSSES (NO GOKU)",
+Default = false,
+Callback = function(state)
+farmAll = state
+end
+})-- =========================
+-- AUTO SKILL UNIVERSAL
+-- =========================
+ 
+local SkillTab = Window:Tab({
+    Title = "Auto Skill",
+})
+ 
+local autoZ = false
+local autoX = false
+local autoC = false
+local autoV = false
+ 
+local skillDelay = 1.5
+ 
+local function fireSkill(key)
+    local char = P.Character
+    if not char then return end
+ 
+    for _,tool in pairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+ 
+            local skillFolder = tool:FindFirstChild("Skill")
+            if skillFolder then
+ 
+                for _,v in pairs(skillFolder:GetChildren()) do
+                    if v:IsA("RemoteEvent") then
+                        v:FireServer(key)
+                    end
+                end
+ 
+            end
+        end
+    end
+end
+ 
+task.spawn(function()
+    while true do
+        if autoZ then
+            fireSkill("Z")
+            task.wait(skillDelay)
+        end
+ 
+        if autoX then
+            fireSkill("X")
+            task.wait(skillDelay)
+        end
+ 
+        if autoC then
+            fireSkill("C")
+            task.wait(skillDelay)
+        end
+ 
+        if autoV then
+            fireSkill("V")
+            task.wait(skillDelay)
+        end
+ 
+        task.wait(0.1)
+    end
+end)
+ 
+SkillTab:Toggle({
+    Title = "Auto Z",
+    Default = false,
+    Callback = function(v) autoZ = v end
+})
+ 
+SkillTab:Toggle({
+    Title = "Auto X",
+    Default = false,
+    Callback = function(v) autoX = v end
+})
+ 
+SkillTab:Toggle({
+    Title = "Auto C",
+    Default = false,
+    Callback = function(v) autoC = v end
+})
+ 
+SkillTab:Toggle({
+    Title = "Auto V",
+    Default = false,
+    Callback = function(v) autoV = v end
+})
+ 
+SkillTab:Input({
+    Title = "Skill Delay",
+    Default = "1.5",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num and num > 0 then
+            skillDelay = num
+        end
+    end
+})-- =========================
+-- AUTO TOOL (SELECTED ONLY)
+-- =========================
+ 
+local ToolTab = Window:Tab({
+    Title = "Auto Tool",
+})
+ 
+local autoTool = false
+local selectedToolName = nil
+local toolDelay = 0.3
+local attackDistance = 30 -- ✅ ระยะโจมตี
+ 
+-- =========================
+-- GET TOOL LIST
+-- =========================
+ 
+local function getAllTools()
+    local tools = {}
+ 
+    for _,v in pairs(P.Backpack:GetChildren()) do
+        if v:IsA("Tool") then
+            table.insert(tools, v.Name)
+        end
+    end
+ 
+    if P.Character then
+        for _,v in pairs(P.Character:GetChildren()) do
+            if v:IsA("Tool") then
+                table.insert(tools, v.Name)
+            end
+        end
+    end
+ 
+    table.sort(tools)
+    return tools
+end
+
+-- =========================
+-- CHECK TARGET IN RANGE
+-- =========================
+
+local function isTargetInRange()
+    local char = P.Character
+    if not char then return false end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+
+    for _,obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj ~= char then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            local part = obj:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and humanoid.Health > 0 and part then
+                local distance = (root.Position - part.Position).Magnitude
+                if distance <= attackDistance then
+                    return true
+                end
+            end
+        end
+    end
+    
+    return false
+end
+ 
+-- =========================
+-- USE TOOL
+-- =========================
+ 
+local function useSelectedTool()
+    if not selectedToolName then return end
+    if not isTargetInRange() then return end -- ✅ เช็คระยะก่อนตี
+    
+    local char = P.Character
+    if not char then return end
+ 
+    local tool = char:FindFirstChild(selectedToolName)
+ 
+    if not tool then
+        local bpTool = P.Backpack:FindFirstChild(selectedToolName)
+        if bpTool then
+            bpTool.Parent = char
+            tool = bpTool
+        end
+    end
+ 
+    if tool then
+        tool:Activate()
+    end
+end
+ 
+-- =========================
+-- LOOP
+-- =========================
+ 
+task.spawn(function()
+    while true do
+        if autoTool then
+            useSelectedTool()
+            task.wait(toolDelay)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+ 
+-- =========================
+-- UI
+-- =========================
+ 
+local toolDropdown = ToolTab:Dropdown({
+    Title = "Select Tool",
+    Values = getAllTools(),
+    Multi = false,
+    Callback = function(value)
+        selectedToolName = value
+    end
+})
+ 
+ToolTab:Button({
+    Title = "Refresh Tool List",
+    Callback = function()
+        toolDropdown:Refresh(getAllTools())
+    end
+})
+ 
+ToolTab:Toggle({
+    Title = "AUTO USE SELECTED TOOL",
+    Default = false,
+    Callback = function(state)
+        autoTool = state
+    end
+})
+ 
+ToolTab:Input({
+    Title = "Tool Delay",
+    Default = "0.3",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num and num > 0 then
+            toolDelay = num
+        end
+    end
+})
+
+-- ✅ เพิ่มช่องปรับระยะ
+ToolTab:Input({
+    Title = "Attack Distance",
+    Default = "30",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num and num > 0 then
+            attackDistance = num
+        end
+    end
+})-- =========================
+-- 🌍 TP SYSTEM
+-- =========================
+
+local WarpList = {
+    ["Starter Island"] = "5",
+    ["Shadow City"] = "Shadow City",
+    ["Noob Island"] = "4",
+    ["Marine Island"] = "Marine",
+    ["Aizen Island"] = "10",
+    ["Event Island"] = "6",
+    ["Demon Slayer Island"] = "3",
+    ["Desert Island"] = "8",
+    ["Goku Island"] = "7",
+    ["Jungle Island"] = "1",
+    ["Titan Island"] = "11"
+}
+
+local function getSafePart(obj)
+    if not obj then return nil end
+    if obj:IsA("BasePart") then
+        return obj
+    end
+    return obj:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function WarpToIsland(displayName)
+
+    local MapFolder = workspace:FindFirstChild("Map")
+    if not MapFolder then
+        warn("Map ยังไม่โหลด")
+        return
+    end
+
+    local targetPart = nil
+
+    -- 🔥 Starter (Map 5 Model Union)
+    if displayName == "Starter Island" then
+        local map5 = MapFolder:FindFirstChild("5")
+        if map5 and map5:FindFirstChild("Model") then
+            targetPart = getSafePart(map5.Model:FindFirstChild("Union"))
+        end
+    end
+
+    -- 🔥 ระบบปกติ
+    if not targetPart then
+        local realName = WarpList[displayName]
+        local island = MapFolder:FindFirstChild(realName)
+        targetPart = getSafePart(island)
+    end
+
+    if not targetPart then
+        warn("ไม่พบจุดวาร์ป:", displayName)
+        return
+    end
+
+    game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart").CFrame =
+        targetPart.CFrame + Vector3.new(0,5,0)
+end
+
+-- =========================
+-- UI
+-- =========================
+
+local WarpTab = Window:Tab({
+    Title = "Warp"
+})
+
+local selectedIsland = nil
+
+WarpTab:Dropdown({
+    Title = "Select Island",
+    Values = (function()
+        local t = {}
+        for name,_ in pairs(WarpList) do
+            table.insert(t, name)
+        end
+        table.sort(t)
+        return t
+    end)(),
+    Callback = function(value)
+        selectedIsland = value
+    end
+})
+
+WarpTab:Button({
+    Title = "Teleport",
+    Callback = function()
+        if selectedIsland then
+            WarpToIsland(selectedIsland)
+        end
+    end
+})-- =========================
+-- 🚀 EXPRESS → RETURN TO SHOP SYSTEM
+-- =========================
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local ExpressTab = Window:Tab({
+    Title = "Express"
+})
+
+local function getSafePart(obj)
+    if not obj then return nil end
+    if obj:IsA("BasePart") then
+        return obj
+    end
+    return obj:FindFirstChildWhichIsA("BasePart", true)
+end
+
+-- หา Get itemNPC ที่ยังอยู่
+local function findItemNPC()
+    for _,v in pairs(workspace:GetDescendants()) do
+        if string.find(v.Name, "Get itemNPC") then
+            return v
+        end
+    end
+    return nil
+end
+
+-- วาร์ปไปด้านหน้า NPC
+local function warpInFront(target, distance)
+    local part = getSafePart(target)
+    if not part then return end
+
+    local hrp = player.Character:WaitForChild("HumanoidRootPart")
+
+    distance = distance or 5
+
+    -- ด้านหน้าของ NPC
+    local frontPosition = part.CFrame * CFrame.new(0, 0, -distance)
+
+    hrp.CFrame = frontPosition
+end
+
+-- ระบบหลัก
+local autoSystem = false
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+
+        if autoSystem then
+
+            local itemNPC = findItemNPC()
+
+            if itemNPC then
+                -- ยังมี itemNPC → วาร์ปไปหา
+                warpInFront(itemNPC, 5)
+            else
+                -- itemNPC หาย → กลับร้าน
+                local shop = workspace:FindFirstChild("Mod")
+                if shop and shop:FindFirstChild("NPC Shop") then
+                    local thunder = shop["NPC Shop"]:FindFirstChild("ThunderNPC")
+                    if thunder then
+                        warpInFront(thunder, 6)
+                    end
+                end
+            end
+
+        end
+    end
+end)
+
+-- ปุ่มเปิดปิด
+ExpressTab:Toggle({
+    Title = "Auto Express + Return Shop",
+    Default = false,
+    Callback = function(state)
+        autoSystem = state
+    end
+})
