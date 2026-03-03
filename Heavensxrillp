@@ -67,7 +67,7 @@ return orb:FindFirstChildWhichIsA("ProximityPrompt", true)
  
 end
  
-local function warpToBoss(boss)
+local function TpToBoss(boss)
 local char = P.Character
 if not char then return end
  
@@ -127,7 +127,7 @@ Callback = function(state)
 running = state
 end
 })-- =========================
--- ORB WARP SYSTEM
+-- ORB TP SYSTEM
 -- =========================
  
 local orbRunning = false
