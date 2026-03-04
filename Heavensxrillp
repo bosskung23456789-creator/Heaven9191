@@ -47,10 +47,19 @@ local running = false
 local lastSummon = 0
  
 local function getBoss()
-local m = workspace:FindFirstChild("Mod")
-if m then m = m:FindFirstChild("Boss") end
-if m then m = m:FindFirstChild("CidBoss") end
-return m
+    local mod = workspace:FindFirstChild("Mod")
+    if not mod then return nil end
+    
+    local bossFolder = mod:FindFirstChild("Boss")
+    if not bossFolder then return nil end
+    
+    for _,v in pairs(bossFolder:GetChildren()) do
+        if string.find(string.lower(v.Name), "cid") then
+            return v
+        end
+    end
+    
+    return nil
 end
  
 local function getPrompt()
