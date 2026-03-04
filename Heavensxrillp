@@ -47,19 +47,10 @@ local running = false
 local lastSummon = 0
  
 local function getBoss()
-    local mod = workspace:FindFirstChild("Mod")
-    if not mod then return nil end
-    
-    local bossFolder = mod:FindFirstChild("Boss")
-    if not bossFolder then return nil end
-    
-    for _,v in pairs(bossFolder:GetChildren()) do
-        if string.find(string.lower(v.Name), "cid") then
-            return v
-        end
-    end
-    
-    return nil
+local m = workspace:FindFirstChild("Mod")
+if m then m = m:FindFirstChild("Boss") end
+if m then m = m:FindFirstChild("CidBoss") end
+return m
 end
  
 local function getPrompt()
@@ -136,6 +127,138 @@ Callback = function(state)
 running = state
 end
 })-- =========================
+-- 🎯 SELECT MONSTER SYSTEM
+-- =========================
+
+local selectedMonster = nil
+local farmSelected = false
+
+-- 🔥 กรองชื่อที่ไม่ต้องการ
+local function isBadName(name)
+    local lower = string.lower(name)
+
+    local blacklist = {
+        "npc","quest","joan","xxtaksoxx","boss",
+        "tribe","teleport","stat reset","save spawn",
+        "rank","haki","god jeed","charaterrig"
+    }
+
+    for _,word in ipairs(blacklist) do
+        if string.find(lower, word) then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- 🔍 ดึงรายชื่อมอนจาก workspace.Mod
+local function getMonsterList()
+    local list = {}
+
+    local mod = workspace:FindFirstChild("Mod")
+    if not mod then return list end
+
+    for _,v in pairs(mod:GetDescendants()) do
+        if v:IsA("Model") and not isBadName(v.Name) then
+            local hum = v:FindFirstChildOfClass("Humanoid")
+            if hum then
+                table.insert(list, v.Name)
+            end
+        end
+    end
+
+    table.sort(list)
+
+    -- กันชื่อซ้ำ
+    local unique = {}
+    local final = {}
+    for _,name in ipairs(list) do
+        if not unique[name] then
+            unique[name] = true
+            table.insert(final, name)
+        end
+    end
+
+    return final
+end
+-- 🎯 Dropdown
+local monsterDropdown = Tab:Dropdown({
+    Title = "Select Monster",
+    Values = getMonsterList(),
+    Multi = false,
+    Callback = function(value)
+        selectedMonster = value
+    end
+})
+
+-- 🔄 ปุ่มรีเฟรช
+Tab:Button({
+    Title = "Refresh Monster List",
+    Callback = function()
+        monsterDropdown:Refresh(getMonsterList())
+    end
+})
+
+-- 🚀 ระบบฟาร์มเฉพาะตัวที่เลือก
+task.spawn(function()
+    while true do
+        if farmSelected and selectedMonster then
+
+            local mod = workspace:FindFirstChild("Mod")
+            if mod then
+
+                for _,target in pairs(mod:GetDescendants()) do
+
+                    if target:IsA("Model") and target.Name == selectedMonster then
+
+                        local hum = target:FindFirstChildOfClass("Humanoid")
+                        local root = target:FindFirstChild("HumanoidRootPart")
+
+                        if hum and hum.Health > 0 and root then
+
+                            local char = P.Character
+                            if char then
+                                local hrp = char:FindFirstChild("HumanoidRootPart")
+
+                                if hrp then
+                                    -- วาร์ปไปด้านหลัง
+                                    local behind = root.CFrame * CFrame.new(0,0,-4)
+
+                                    -- หันหน้าเข้าหามอน
+                                    hrp.CFrame = CFrame.lookAt(
+                                        behind.Position,
+                                        root.Position
+                                    )
+
+                                    -- ตี
+                                    for _,tool in pairs(char:GetChildren()) do
+                                        if tool:IsA("Tool") then
+                                            tool:Activate()
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+            end
+        end
+
+        task.wait(0.15)
+    end
+end)
+
+-- 🔘 Toggle เปิด/ปิด
+Tab:Toggle({
+    Title = "AUTO FARM SELECTED",
+    Default = false,
+    Callback = function(state)
+        farmSelected = state
+    end
+})
+    -- =========================
 -- ORB TP SYSTEM
 -- =========================
  
