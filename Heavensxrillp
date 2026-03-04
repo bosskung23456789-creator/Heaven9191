@@ -154,9 +154,10 @@ end
 
 -- 🔍 ดึงรายชื่อมอนจาก workspace.Mod
 local function getMonsterList()
+
     local list = {}
 
-    local mod = workspace:FindFirstChild("Mod")
+    local mod = workspace:WaitForChild("Mod",10)
     if not mod then return list end
 
     for _,v in pairs(mod:GetDescendants()) do
@@ -170,9 +171,9 @@ local function getMonsterList()
 
     table.sort(list)
 
-    -- กันชื่อซ้ำ
     local unique = {}
     local final = {}
+
     for _,name in ipairs(list) do
         if not unique[name] then
             unique[name] = true
@@ -191,6 +192,10 @@ local monsterDropdown = Tab:Dropdown({
         selectedMonster = value
     end
 })
+task.spawn(function()
+    task.wait(3)
+    monsterDropdown:Refresh(getMonsterList())
+end)
 
 -- 🔄 ปุ่มรีเฟรช
 Tab:Button({
