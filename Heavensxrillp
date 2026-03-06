@@ -864,4 +864,34 @@ ExpressTab:Toggle({
     Callback = function(state)
         autoSystem = state
     end
+})-- =========================
+-- ANTI AFK SYSTEM
+-- =========================
+
+local AntiAFKTab = Window:Tab({
+    Title = "Anti AFK"
+})
+
+local antiAFK = false
+
+local VirtualUser = game:GetService("VirtualUser")
+
+task.spawn(function()
+    while true do
+        if antiAFK then
+            pcall(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+        task.wait(60)
+    end
+end)
+
+AntiAFKTab:Toggle({
+    Title = "Enable Anti AFK",
+    Default = false,
+    Callback = function(state)
+        antiAFK = state
+    end
 })
