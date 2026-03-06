@@ -441,7 +441,125 @@ Default = false,
 Callback = function(state)
 farmAll = state
 end
-})-- =========================
+})
+-- =========================
+-- 🎯 SELECT BOSS SYSTEM (MAIN LAST)
+-- =========================
+
+local selectedBoss = nil
+local farmSelectedBoss = false
+
+local function getBossList()
+
+    local list = {}
+
+    local mod = workspace:FindFirstChild("Mod")
+    if not mod then return list end
+
+    local bossFolder = mod:FindFirstChild("Boss")
+    if not bossFolder then return list end
+
+    for _,v in pairs(bossFolder:GetChildren()) do
+        if v:IsA("Model") then
+            local hum = v:FindFirstChildOfClass("Humanoid")
+            if hum then
+                table.insert(list, v.Name)
+            end
+        end
+    end
+
+    table.sort(list)
+    return list
+end
+
+-- Dropdown
+local bossDropdown = Tab:Dropdown({
+    Title = "Select Boss",
+    Values = getBossList(),
+    Multi = false,
+    Callback = function(value)
+        selectedBoss = value
+    end
+})
+
+-- Refresh
+Tab:Button({
+    Title = "Refresh Boss List",
+    Callback = function()
+        bossDropdown:Refresh(getBossList())
+    end
+})
+
+-- Toggle
+Tab:Toggle({
+    Title = "AUTO FARM SELECTED BOSS",
+    Default = false,
+    Callback = function(state)
+        farmSelectedBoss = state
+    end
+})
+
+-- System
+task.spawn(function()
+    while true do
+
+        if farmSelectedBoss and selectedBoss then
+
+            local mod = workspace:FindFirstChild("Mod")
+            if mod then
+
+                local bossFolder = mod:FindFirstChild("Boss")
+
+                if bossFolder then
+
+                    for _,boss in pairs(bossFolder:GetChildren()) do
+
+                        if boss.Name == selectedBoss then
+
+                            local hum = boss:FindFirstChildOfClass("Humanoid")
+                            local root = boss:FindFirstChild("HumanoidRootPart")
+
+                            if hum and hum.Health > 0 and root then
+
+                                local char = P.Character
+                                if char then
+
+                                    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+                                    if hrp then
+
+                                        local behind = root.CFrame * CFrame.new(0,0,-4)
+
+                                        hrp.CFrame = CFrame.lookAt(
+                                            behind.Position,
+                                            root.Position
+                                        )
+
+                                        for _,tool in pairs(char:GetChildren()) do
+                                            if tool:IsA("Tool") then
+                                                tool:Activate()
+                                            end
+                                        end
+
+                                    end
+                                end
+
+                            end
+
+                        end
+                    end
+
+                end
+
+            end
+
+        end
+
+        task.wait(0.15)
+
+    end
+end)
+-- =========================
 -- AUTO SKILL UNIVERSAL
 -- =========================
  
@@ -764,7 +882,7 @@ local selectedIsland = nil
 
 WarpTab:Dropdown({
     Title = "Select Island",
-    Values = (function()
+  Values = (function()
         local t = {}
         for name,_ in pairs(WarpList) do
             table.insert(t, name)
