@@ -903,14 +903,14 @@ WarpTab:Button({
         end
     end
 })-- =========================
--- 🚀 EXPRESS → RETURN TO SHOP SYSTEM
+-- 🎉 EVENT ITEM TAB (Express + Ore)
 -- =========================
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local ExpressTab = Window:Tab({
-    Title = "Express"
+local EventTab = Window:Tab({
+    Title = "Event Item"
 })
 
 local function getSafePart(obj)
@@ -921,18 +921,20 @@ local function getSafePart(obj)
     return obj:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- หา Get itemNPC ที่ยังอยู่
+-- =========================
+-- EXPRESS SYSTEM
+-- =========================
+
 local function findItemNPC()
     for _,v in pairs(workspace:GetDescendants()) do
         if string.find(v.Name, "Get itemNPC") then
             return v
         end
     end
-    return nil
 end
 
--- วาร์ปไปด้านหน้า NPC
 local function warpInFront(target, distance)
+
     local part = getSafePart(target)
     if not part then return end
 
@@ -940,49 +942,213 @@ local function warpInFront(target, distance)
 
     distance = distance or 5
 
-    -- ด้านหน้าของ NPC
-    local frontPosition = part.CFrame * CFrame.new(0, 0, -distance)
+    local frontPosition = part.CFrame * CFrame.new(0,0,-distance)
 
     hrp.CFrame = frontPosition
 end
 
--- ระบบหลัก
-local autoSystem = false
+local autoExpress = false
 
 task.spawn(function()
     while true do
         task.wait(1)
 
-        if autoSystem then
+        if autoExpress then
 
             local itemNPC = findItemNPC()
 
             if itemNPC then
-                -- ยังมี itemNPC → วาร์ปไปหา
-                warpInFront(itemNPC, 5)
+                warpInFront(itemNPC,5)
+
             else
-                -- itemNPC หาย → กลับร้าน
+
                 local shop = workspace:FindFirstChild("Mod")
+
                 if shop and shop:FindFirstChild("NPC Shop") then
+
                     local thunder = shop["NPC Shop"]:FindFirstChild("ThunderNPC")
+
                     if thunder then
-                        warpInFront(thunder, 6)
+                        warpInFront(thunder,6)
                     end
+
                 end
+
             end
 
         end
     end
 end)
 
--- ปุ่มเปิดปิด
-ExpressTab:Toggle({
+EventTab:Toggle({
     Title = "Auto Express + Return Shop",
     Default = false,
     Callback = function(state)
-        autoSystem = state
+        autoExpress = state
     end
-})-- =========================
+})
+
+-- =========================
+-- ORE FARM SYSTEM
+-- =========================
+
+local MineralSpawn = workspace:WaitForChild("Map"):WaitForChild("MineralSpawn")
+
+local MineralNames = {}
+local MineralTable = {}
+
+local function addOre(ore)
+	if not MineralTable[ore.Name] then
+		MineralTable[ore.Name] = {}
+		table.insert(MineralNames, ore.Name)
+	end
+	table.insert(MineralTable[ore.Name], ore)
+end
+
+local function scan(folder)
+	if folder then
+		for _,spawn in pairs(folder:GetChildren()) do
+			for _,ore in pairs(spawn:GetChildren()) do
+				addOre(ore)
+			end
+		end
+	end
+end
+
+-- สแกนแร่
+scan(MineralSpawn:FindFirstChild("Mineral"))
+scan(MineralSpawn:FindFirstChild("Rare Mineral"))
+
+local SelectedOre = nil
+local CurrentOre = nil
+
+local AutoWarpOre = false
+local AutoPickaxe = false
+
+-- UI
+EventTab:Dropdown({
+	Title = "Select Ore",
+	Values = MineralNames,
+	Callback = function(v)
+		SelectedOre = v
+	end
+})
+
+EventTab:Toggle({
+	Title = "Auto Warp Ore",
+	Default = false,
+	Callback = function(v)
+		AutoWarpOre = v
+	end
+})
+
+EventTab:Toggle({
+	Title = "Auto Pickaxe",
+	Default = false,
+	Callback = function(v)
+		AutoPickaxe = v
+	end
+})
+
+-- หา part ของแร่
+local function getPart(obj)
+
+	if obj:IsA("BasePart") then
+		return obj
+	end
+
+	if obj:IsA("Model") then
+		return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+	end
+
+end
+
+-- หา Pickaxe
+local function getPickaxe()
+
+	local char = player.Character
+	local backpack = player:FindFirstChild("Backpack")
+
+	if char then
+		for _,v in pairs(char:GetChildren()) do
+			if v:IsA("Tool") and string.find(v.Name,"Pickaxe") then
+				return v
+			end
+		end
+	end
+
+	if backpack then
+		for _,v in pairs(backpack:GetChildren()) do
+			if v:IsA("Tool") and string.find(v.Name,"Pickaxe") then
+				v.Parent = char
+				return v
+			end
+		end
+	end
+
+end
+
+-- ตีแร่
+local function hitOre()
+
+	local tool = getPickaxe()
+	if not tool then return end
+
+	local combo = tool:FindFirstChild("Combo")
+	if not combo then return end
+
+	combo.C0:FireServer()
+	task.wait(0.1)
+	combo.C1:FireServer()
+
+end
+
+task.spawn(function()
+
+while true do
+task.wait(0.15)
+
+if AutoWarpOre and SelectedOre then
+
+CurrentOre = SelectedOre
+local ores = MineralTable[CurrentOre]
+
+for _,ore in pairs(ores) do
+
+if not AutoWarpOre then break end
+if SelectedOre ~= CurrentOre then break end
+
+local char = player.Character
+local root = char and char:FindFirstChild("HumanoidRootPart")
+local part = getPart(ore)
+
+if root and part and ore.Parent then
+
+root.CFrame = CFrame.new(part.Position + Vector3.new(0,4,0))
+
+while ore.Parent and AutoWarpOre do
+task.wait(0.4)
+
+if SelectedOre ~= CurrentOre then
+break
+end
+
+if AutoPickaxe then
+hitOre()
+end
+
+end
+
+end
+
+end
+
+end
+
+end
+
+end)
+-- =========================
 -- ANTI AFK SYSTEM
 -- =========================
 
