@@ -1069,17 +1069,19 @@ local function getPickaxe()
 	local char = player.Character
 	local backpack = player:FindFirstChild("Backpack")
 
+	-- ถ้ามี Pickaxe อยู่ในมือแล้ว
 	if char then
 		for _,v in pairs(char:GetChildren()) do
-			if v:IsA("Tool") and string.find(v.Name,"Pickaxe") then
+			if v:IsA("Tool") and string.find(string.lower(v.Name),"pickaxe") then
 				return v
 			end
 		end
 	end
 
-	if backpack then
+	-- ถ้าอยู่ใน Backpack ให้ equip เฉพาะ Pickaxe
+	if backpack and char then
 		for _,v in pairs(backpack:GetChildren()) do
-			if v:IsA("Tool") and string.find(v.Name,"Pickaxe") then
+			if v:IsA("Tool") and string.find(string.lower(v.Name),"pickaxe") then
 				v.Parent = char
 				return v
 			end
@@ -1098,11 +1100,9 @@ local function hitOre()
 	if not combo then return end
 
 	combo.C0:FireServer()
-	task.wait(0.1)
 	combo.C1:FireServer()
 
 end
-
 task.spawn(function()
 
 while true do
